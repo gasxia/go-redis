@@ -169,6 +169,10 @@ func (sl *Skiplist) deleteNode(x *skiplistNode, update []*skiplistNode) {
 	sl.length--
 }
 
+func (sl *Skiplist) GetRank(x *skiplistNode, update []*skiplistNode) {
+
+}
+
 func NewSkiplist() *Skiplist {
 	sl := &Skiplist{
 		level:  1,
