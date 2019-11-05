@@ -41,7 +41,7 @@ func (obj *robj) compareStringObjects(other *robj) bool {
 }
 
 func (obj *robj) getString() string {
-	return *(obj.ptr.(*string))
+	return obj.ptr.(string)
 }
 
 func newObject(rtype redisObjectType, ptr interface{}) *robj {
@@ -58,11 +58,7 @@ func newObject(rtype redisObjectType, ptr interface{}) *robj {
 // 创建一个 REDIS_ENCODING_RAW 编码的字符对象
 // 对象的指针指向一个 sds 结构
 func newRawStringObject(ptr string) *robj {
-	return newObject(RedisString, newSds(ptr))
-}
-
-func newSds(ptr string) interface{} {
-	return &ptr
+	return newObject(RedisString, newsds(ptr))
 }
 
 /* Create a string object with encoding REDIS_ENCODING_EMBSTR, that is
@@ -71,13 +67,15 @@ func newSds(ptr string) interface{} {
 // 创建一个 REDIS_ENCODING_EMBSTR 编码的字符对象
 // 这个字符串对象中的 sds 会和字符串对象的 redisObject 结构一起分配
 // 因此这个字符也是不可修改的
+
+// jrs: golang中string类型也是
 func newEmbeddedStringObject(ptr string) *robj {
 	return &robj{
 		rtype:    RedisString,
 		encoding: RedisEncodingEmbstr,
 		lru:      1,
 		refcount: 1,
-		ptr:      &ptr,
+		ptr:      ptr,
 	}
 	//return newRawStringObject(ptr)
 }
@@ -95,7 +93,6 @@ func newStringObject(ptr string) *robj {
 		return newEmbeddedStringObject(ptr)
 	} else {
 		return newRawStringObject(ptr)
-
 	}
 }
 
