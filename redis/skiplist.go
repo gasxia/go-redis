@@ -1,4 +1,4 @@
-package structure
+package redis
 
 import (
 	"math/rand"
@@ -14,19 +14,19 @@ type skiplistLevel struct {
 }
 
 type skiplistNode struct {
-	robj     interface{}
+	robj     *robj
 	score    float64
 	backward *skiplistNode
 	level    []skiplistLevel
 }
 
-type Skiplist struct {
+type skiplist struct {
 	header, tail *skiplistNode
 	length       uint64
 	level        int
 }
 
-func slCreateNode(level int, score float64, robj interface{}) *skiplistNode {
+func slCreateNode(level int, score float64, robj *robj) *skiplistNode {
 	node := &skiplistNode{
 		level: make([]skiplistLevel, level),
 		score: score,
@@ -45,7 +45,7 @@ func slRandomLevel() int {
 	return level
 }
 
-func (sl *Skiplist) Search(score float64) interface{} {
+func (sl *skiplist) Search(score float64) *robj {
 	x := sl.header
 	//var forward *skiplistNode
 	for i := sl.level - 1; i >= 0; i-- {
@@ -62,7 +62,19 @@ func (sl *Skiplist) Search(score float64) interface{} {
 	}
 }
 
-func (sl *Skiplist) Insert(score float64, robj interface{}) *skiplistNode {
+func (sl *skiplist) nodeLessValue(node *skiplistNode, score float64, robj *robj) bool {
+	if node == nil {
+		return false
+	}
+	if node.score < score {
+		return true
+	}
+	if node.score == score && compareStringObjects(node.robj, robj) < 0 {
+		return true
+	}
+	return false
+}
+func (sl *skiplist) Insert(score float64, robj *robj) *skiplistNode {
 	update := make([]*skiplistNode, skiplistMaxLevel)
 	rank := make([]uint, skiplistMaxLevel)
 	var x *skiplistNode
@@ -79,15 +91,13 @@ func (sl *Skiplist) Insert(score float64, robj interface{}) *skiplistNode {
 		} else {
 			rank[i] = rank[i+1]
 		}
-		// todo compare obj
-		for x.level[i].forward != nil && x.level[i].forward.score < score {
+		for sl.nodeLessValue(x.level[i].forward, score, robj) {
 			x = x.level[i].forward
 			// 往前跳跃了span个元素
 			rank[i] += x.level[i].span
 		}
 		update[i] = x
 	}
-	// todo handle same key and obj
 	level = slRandomLevel()
 	if level > sl.level {
 		for i := sl.level; i < level; i++ {
@@ -126,7 +136,7 @@ func (sl *Skiplist) Insert(score float64, robj interface{}) *skiplistNode {
 	return x
 }
 
-func (sl *Skiplist) Delete(score float64, robj interface{}) int {
+func (sl *skiplist) Delete(score float64, robj *robj) int {
 	update := make([]*skiplistNode, skiplistMaxLevel)
 	var x *skiplistNode
 
@@ -134,13 +144,18 @@ func (sl *Skiplist) Delete(score float64, robj interface{}) int {
 	//var forward *skiplistNode
 	for i := sl.level - 1; i >= 0; i-- {
 		//forward = x.level[i].forward
-		for x.level[i].forward != nil && x.level[i].forward.score < score {
+		for sl.nodeLessValue(x.level[i].forward, score, robj) {
 			x = x.level[i].forward
 		}
 		update[i] = x
 	}
+	/* We may have multiple elements with the same score, what we need
+	 * is to find the element with both the right score and object.
+	 *
+	 * 检查找到的元素 x ，只有在它的分值和对象都相同时，才将它删除。
+	 */
 	x = x.level[0].forward
-	if x != nil && x.score == score {
+	if x != nil && x.score == score && equalStringObjects(x.robj, robj) {
 		sl.deleteNode(x, update)
 		return 1
 	} else {
@@ -148,7 +163,7 @@ func (sl *Skiplist) Delete(score float64, robj interface{}) int {
 	}
 }
 
-func (sl *Skiplist) deleteNode(x *skiplistNode, update []*skiplistNode) {
+func (sl *skiplist) deleteNode(x *skiplistNode, update []*skiplistNode) {
 	for i := 0; i < sl.level; i++ {
 		if update[i].level[i].forward == x {
 			update[i].level[i].forward = x.level[i].forward
@@ -169,12 +184,12 @@ func (sl *Skiplist) deleteNode(x *skiplistNode, update []*skiplistNode) {
 	sl.length--
 }
 
-func (sl *Skiplist) GetRank(x *skiplistNode, update []*skiplistNode) {
+func (sl *skiplist) GetRank(x *skiplistNode, update []*skiplistNode) {
 
 }
 
-func NewSkiplist() *Skiplist {
-	sl := &Skiplist{
+func NewSkiplist() *skiplist {
+	sl := &skiplist{
 		level:  1,
 		length: 0,
 		header: slCreateNode(skiplistMaxLevel, 0, nil),

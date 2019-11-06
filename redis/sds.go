@@ -1,4 +1,4 @@
-package structure
+package redis
 
 type sds struct {
 	len  int
@@ -14,4 +14,8 @@ func newsds(init string) *sds {
 		buf:  buf,
 	}
 	return sh
+}
+
+func (s *sds) sdslen() int {
+	return s.len
 }
