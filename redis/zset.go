@@ -9,13 +9,11 @@ type zset struct {
 	dict *dict
 
 	zsl *skiplist
-
 }
-
 
 func zscoreCommand(c *client) {
 	key := c.argv[1]
-	var score float64
+	//var score float64
 
 	zobj := lookipKeyReadOrReply(c, key, shared.nullbulk)
 	if zobj == nil || zobj.checkType(c, RedisZset) {
@@ -26,9 +24,18 @@ func zscoreCommand(c *client) {
 		// todo
 	} else if zobj.encoding == RedisEncodingSkiplist {
 		zs := zobj.ptr.(*zset)
-		var de *dictEntry
 
 		c.argv[2] = tryObjectEncoding(c.argv[2])
+		de := zs.dict.Find(c.argv[2])
+		if de != nil {
+			if score, ok := de.GetVal().(float64); ok {
+				addReplyDouble(c, score)
+			}
+		} else {
+			addReply(c, shared.nullbulk)
+		}
+	} else {
+		panic("Unknown sorted set encoding")
 	}
 
 }

@@ -1,6 +1,10 @@
 package redis
 
-import "strings"
+import (
+	"fmt"
+	"math"
+	"strings"
+)
 
 /* A redis object, that is a type able to hold a string / list / set */
 
@@ -100,7 +104,7 @@ func createEmbeddedStringObject(ptr string) *robj {
 		encoding: RedisEncodingEmbstr,
 		lru:      1,
 		refcount: 1,
-		ptr:      ptr,
+		ptr:      newsds(ptr),
 	}
 	//return createRawStringObject(ptr)
 }
@@ -121,6 +125,27 @@ func createStringObject(ptr string) *robj {
 	}
 }
 
+func createStringObjectFromLongLong(value int64) *robj {
+	var o *robj
+	// todo shared.integers
+	if false {
+
+	} else {
+		if value >= math.MinInt32 && value <= math.MaxInt32 {
+			o = createObject(RedisString, nil)
+			o.encoding = RedisEncodingInt
+			o.ptr = value
+		} else {
+			o = createObject(RedisString, sdsfromlonglong(value))
+		}
+	}
+	return o
+}
+
+func createStringObjectFromFloat64(value float64) *robj {
+	s := fmt.Sprintf("%.17f", value)
+	return createStringObject(s)
+}
 /*
  * 检查对象 o 的类型是否和 type 相同：
  *
@@ -128,20 +153,19 @@ func createStringObject(ptr string) *robj {
  *
  *  - 不相同返回 1 ，并向客户端回复一个错误
  */
-func (obj *robj)checkType(c *client, _type redisObjectType) bool {
+func (obj *robj) checkType(c *client, _type redisObjectType) bool {
 	if obj._type != _type {
-		addReply(c,shared.wrongtypeerr)
-		return false
+		addReply(c, shared.wrongtypeerr)
+		return true
 	}
-	return true
+	return false
 }
 
-func (obj *robj)sdsEncodedObject() bool {
+func (obj *robj) sdsEncodedObject() bool {
 	return obj.encoding == RedisEncodingRaw || obj.encoding == RedisEncodingEmbstr
 }
 
 func tryObjectEncoding(o *robj) *robj {
-	var value int64
 	s := o.ptr.(*sds)
 
 	// todo assert
@@ -151,10 +175,31 @@ func tryObjectEncoding(o *robj) *robj {
 		return o
 	}
 
-	len := s.sdslen()
-	if len <= 21 && string2l(s, len) {
-
+	slen := s.sdslen()
+	if slen <= 21 {
+		value, flag := string2l(s.buf)
+		if flag {
+			/* This object is encodable as a long. Try to use a shared object.
+			 * Note that we avoid using shared integers when maxmemory is used
+			 * because every object needs to have a private LRU field for the LRU
+			 * algorithm to work well. */
+			//if (server.maxmemory == 0 &&
+			//	value >= 0 &&
+			//	value < REDIS_SHARED_INTEGERS)
+			//{
+			// todo use redis shared integers
+			o.encoding = RedisEncodingInt
+			o.ptr = value
+			return o
+		}
 	}
 
+	// todo save memory space
+	return o
+}
 
+func createZsetObject(zs *zset) *robj {
+	o := createObject(RedisZset, zs)
+	o.encoding = RedisEncodingSkiplist
+	return o
 }

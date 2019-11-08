@@ -1,5 +1,7 @@
 package redis
 
+import "strconv"
+
 type sds struct {
 	len  int
 	free int
@@ -18,4 +20,9 @@ func newsds(init string) *sds {
 
 func (s *sds) sdslen() int {
 	return s.len
+}
+
+func sdsfromlonglong(value int64) *sds {
+	s := strconv.FormatInt(value, 10)
+	return newsds(s)
 }

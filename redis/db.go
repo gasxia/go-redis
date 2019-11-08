@@ -2,6 +2,12 @@ package redis
 
 type Db struct {
 	id int
+	dict map[*robj]*robj
+}
+
+
+func (db *Db)lookupKey(key *robj) *robj {
+	return db.dict[key]
 }
 
 /*
@@ -13,14 +19,13 @@ type Db struct {
  */
 func lookupKeyRead(db *Db, key *robj) *robj {
 	// todo
-	return nil
 	//robj *val;
 	//
 	//// 检查 key 释放已经过期
 	//expireIfNeeded(db,key);
 	//
 	//// 从数据库中取出键的值
-	//val = lookupKey(db,key);
+	val := db.lookupKey(key)
 	//
 	//// 更新命中/不命中信息
 	//if (val == NULL)
@@ -29,7 +34,7 @@ func lookupKeyRead(db *Db, key *robj) *robj {
 	//server.stat_keyspace_hits++;
 	//
 	//// 返回值
-	//return val;
+	return val
 }
 
 /*

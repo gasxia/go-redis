@@ -7,7 +7,7 @@ import (
 /* Convert a string into a long long. Returns 1 if the string could be parsed
  * into a (non-overflowing) long long, 0 otherwise. The value will be set to
  * the parsed value when appropriate. */
-func string2ll(s string) (value int64, flag bool) {
+func string2ll(s []byte) (value int64, flag bool) {
 	p := s
 	plen := 0
 	slen := len(s)
@@ -62,7 +62,7 @@ func string2ll(s string) (value int64, flag bool) {
 		}
 		value = -int64(v)
 	} else {
-		if v > math.MinInt64 {
+		if v > math.MaxInt64 {
 			return 0, false
 		}
 		value = int64(v)
@@ -74,7 +74,7 @@ func string2ll(s string) (value int64, flag bool) {
 /* Convert a string into a long. Returns 1 if the string could be parsed into a
  * (non-overflowing) long, 0 otherwise. The value will be set to the parsed
  * value when appropriate. */
-func string2l(s string) (long int32, flag bool) {
+func string2l(s []byte) (long int32, flag bool) {
 	v, flag := string2ll(s)
 	if !flag {
 		return 0, false
