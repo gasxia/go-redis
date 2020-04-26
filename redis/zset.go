@@ -11,6 +11,18 @@ type zset struct {
 	zsl *skiplist
 }
 
+func zaddGenericCommand(c *client, incr int) {
+
+}
+
+func zaddCommand(c *client) {
+	zaddGenericCommand(c, 0)
+}
+
+func zincrbyCommand(c *client) {
+	zaddGenericCommand(c, 1)
+}
+
 func zscoreCommand(c *client) {
 	key := c.argv[1]
 	//var score float64
